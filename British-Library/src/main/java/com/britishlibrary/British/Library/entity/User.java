@@ -1,3 +1,4 @@
+//hence lets do it lets start and complete it since i am a laymann or a newbie so give me each and everything such as code wit path and each and everyhting in detailed spoonfed manner 
 package com.britishlibrary.British.Library.entity;
 
 import org.springframework.data.annotation.Id;
