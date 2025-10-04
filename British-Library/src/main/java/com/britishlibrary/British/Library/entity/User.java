@@ -18,6 +18,15 @@ public class User {
     private String password;
     @DBRef
     private List<BookEntry> bookEntries =new ArrayList<>();
+    private List<String> roles;
+
+    public List<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<String> roles) {
+        this.roles = roles;
+    }
 
     public String getUserName() {
         return userName;

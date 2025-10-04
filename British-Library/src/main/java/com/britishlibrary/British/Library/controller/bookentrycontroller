@@ -1,0 +1,117 @@
+package com.britishlibrary.British.Library.controller;
+
+import com.britishlibrary.British.Library.entity.BookEntry;
+import com.britishlibrary.British.Library.entity.User;
+import com.britishlibrary.British.Library.service.BookEntryService;
+import com.britishlibrary.British.Library.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/books")
+public class BookEntryController {
+    @Autowired
+    private BookEntryService bookEntryService;
+
+    @Autowired
+    private UserService userService;
+
+    //get all book entries of a user
+    @GetMapping("/{userName}")
+    public List<BookEntry> getAllEntriesOfUser(@PathVariable String userName) {
+        User user = userService.findbyUsername(userName);
+        if (user == null) {
+            throw new RuntimeException("User not found with username: " + userName);
+        }
+        return user.getBookEntries();  // ✅ Only return the books of that user
+    }
+
+
+    @PostMapping("/{userName}")
+    public BookEntry insertBookToAUser  (@RequestBody BookEntry myEntry, @PathVariable String userName) {
+        // 1️⃣ Set registration date
+        myEntry.setRegdate(LocalDateTime.now());
+
+        // 2️⃣ Save the book entry first
+        BookEntry savedEntry = bookEntryService.saveEntry(myEntry);
+        // 3️⃣ Fetch the user by username
+        User user = userService.findbyUsername(userName);
+        if (user == null) {
+            throw new RuntimeException("user not found with username: " + userName);
+        }
+        // 4️⃣ Add the saved book to the user's list
+        user.getBookEntries().add(savedEntry);
+
+        // 5️⃣ Save the updated user
+        userService.saveUser(user);
+        // 6️⃣ Return the saved book entry
+        return savedEntry;
+    }
+    @PutMapping("/{userName}/{bookId}")
+    public BookEntry updateBookForUser(@PathVariable String userName,
+                                       @PathVariable String bookId,
+                                       @RequestBody BookEntry updatedBook) {
+        // 1️⃣ Find the user
+        User user = userService.findbyUsername(userName);
+        if (user == null) {
+            throw new RuntimeException("User not found with username: " + userName);
+        }
+
+        // 2️⃣ Find the book
+        BookEntry existingBook = bookEntryService.getBookById(bookId);
+        if (existingBook == null) {
+            throw new RuntimeException("Book not found with id: " + bookId);
+        }
+
+        // 3️⃣ Update fields if provided
+        if (updatedBook.getTitle() != null && !updatedBook.getTitle().isEmpty()) {
+            existingBook.setTitle(updatedBook.getTitle());
+        }
+        if (updatedBook.getAuthorName() != null && !updatedBook.getAuthorName().isEmpty()) {
+            existingBook.setAuthorName(updatedBook.getAuthorName());
+        }
+        if (updatedBook.getYear() != 0) {  // only update if non-zero
+            existingBook.setYear(updatedBook.getYear());
+        }
+
+        // 4️⃣ Save updated book
+        BookEntry savedBook = bookEntryService.saveEntry(existingBook);
+
+        // 5️⃣ Make sure the user still references the updated book
+        user.getBookEntries().removeIf(b -> b.getId().equals(bookId));
+        user.getBookEntries().add(savedBook);
+        userService.saveUser(user);
+
+        // 6️⃣ Return updated book
+        return savedBook;
+    }
+    @DeleteMapping("/{userName}/{bookId}")
+    public String deleteBookFromUser(@PathVariable String userName, @PathVariable String bookId){
+        // 1️⃣ Find the user
+        User user = userService.findbyUsername(userName);
+        if (user == null){
+            throw new RuntimeException("User not found with username: " + userName);
+        }
+
+        // 2️⃣ Find the book
+        BookEntry book = bookEntryService.getBookById(bookId);
+        if (book == null){
+            throw new RuntimeException("Book not found with id: " + bookId);
+        }
+
+        // 3️⃣ Remove book reference from user
+        user.getBookEntries().removeIf(b -> b.getId().equals(bookId));
+        userService.saveUser(user);
+
+        // 4️⃣ Delete book from database
+        bookEntryService.deleteById(bookId);
+
+        // 5️⃣ Return confirmation
+        return "Book with id " + bookId + " deleted successfully from user " + userName;
+    }
+
+
+}
